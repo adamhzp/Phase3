@@ -13,7 +13,10 @@ public class Peer {
     public ConnectionToPeer connection;
     public ByteBuffer peerId;
     private BitSet availablePieces = new BitSet();
-    public BitSet sent = null;
+    public BitSet rareUpdated = null;
+    public int downloaded = 0;
+    public int uploaded = 0;
+    public int startTime = 0;
 
     /**
      * Constructor Peer object
@@ -23,7 +26,7 @@ public class Peer {
     public Peer(ByteBuffer peerId, ConnectionToPeer peerConnection, int pieces) {
         this.peerId = peerId.duplicate();
         this.connection = peerConnection;
-        this.sent = new BitSet(pieces);
+        this.rareUpdated = new BitSet(pieces);
     }
 
     /**
@@ -32,6 +35,18 @@ public class Peer {
      */
     public void setAvailablePieces(BitSet availablePieces) {
         this.availablePieces = availablePieces;
+        for(int i = 0;i<availablePieces.length(); i++)
+        {
+            try{
+                if(!this.rareUpdated.get(i) && availablePieces.get(i)){
+                    RUBTClient.setRare(i);
+                    this.rareUpdated.set(i);
+                }
+            }catch(IndexOutOfBoundsException e)
+            {
+                e.printStackTrace();
+            }
+        }
     }
 
     /**
@@ -48,6 +63,15 @@ public class Peer {
      */
     public void setPieceAvailable(int index) {
         this.availablePieces.set(index);
+        try{
+            if(!this.rareUpdated.get(index) && availablePieces.get(index)){
+                RUBTClient.setRare(index);
+                this.rareUpdated.set(index);
+            }
+        }catch(IndexOutOfBoundsException e)
+        {
+            e.printStackTrace();
+        }    
     }
 
 
