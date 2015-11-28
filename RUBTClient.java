@@ -60,7 +60,7 @@ public class RUBTClient {
     private static long lastAnnounce = 0;
     private static int minInterval = 0;
     private static int interval = 0;        // The number of seconds the downloader should wait between regular rerequests.
-    
+    private static int pcTotal = 0;
     private static boolean sentComplete = false;
     public static boolean running = true;
     private final static Object fileLock = new Object();
@@ -90,6 +90,7 @@ public class RUBTClient {
     private static int initiateTime = 0;
     private static int finishTime = 0;
     private static Timer chokeTimer;
+    private static int rare[] = null;
 
     /**
      * This is the main method that is called upon program startup, this method
@@ -161,6 +162,7 @@ public class RUBTClient {
             System.err.println("IO exception occure while opening the destinationFile to write");
         }
         
+        rare = new int[pcTotal];
         //load the downloaded pieces from the last download
         boolean load = loadDownloadHistory();
 
@@ -561,6 +563,13 @@ public class RUBTClient {
         return true;
     }
 
+    public static void setRare(int index)
+    {
+        if(rare[index] == -1)
+            return;
+        
+        rare[index]++;
+    }
 
     /*
      * Send requests to other peers
@@ -790,6 +799,7 @@ private static ArrayList<Pieces> generatePieces() {
         al.add(new Pieces(i, Math.min(total, tiObject.piece_length), tiObject.piece_hashes[i]));
     }
     piecesHad = new BitSet(al.size());
+    pcTotal = al.size();
     return al;
 }
     
