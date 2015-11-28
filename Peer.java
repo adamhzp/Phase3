@@ -74,6 +74,26 @@ public class Peer {
         }    
     }
 
+    public double getPerformance(int endTime)
+    {
+        double pfmc = 0;
+
+        if(this.uploaded == 0 && this.downloaded != 0)
+        {
+            pfmc = ((double)this.downloaded)/((double)(endTime - this.startTime));
+            return pfmc;
+        }
+        else if(this.uploaded != 0 && this.downloaded ==0)
+        {
+            pfmc = 0-((double)this.uploaded)/((double)(endTime - this.startTime));
+            return pfmc;
+        }
+        else{
+            //need to be modified
+            return pfmc;
+        }
+
+    }
 
     /**
         Used to know if a peer can provide a certain piece
