@@ -90,7 +90,9 @@ public class RUBTClient {
     private static int initiateTime = 0;
     private static int finishTime = 0;
     private static Timer chokeTimer;
+
     private static int rare[] = null;
+
 
     /**
      * This is the main method that is called upon program startup, this method
@@ -146,9 +148,8 @@ public class RUBTClient {
         String destinationFile = args[1];
 
         left = tiObject.file_length;    // The number of bytes this peer still has to download  
-        peerId = generateId();            // A string of length 20 generated which downloader uses as its id          
+        peerId = "adambittorrentclient";            // A string of length 20 generated which downloader uses as its id          
         pieces = generatePieces();      // generate piece from torrent
-        
         hash = infoHash(tiObject.info_hash.array());
         trackerURL =tiObject.announce_url;  
         Listener listener = null; 
@@ -161,8 +162,9 @@ public class RUBTClient {
         } catch (IOException e) {
             System.err.println("IO exception occure while opening the destinationFile to write");
         }
-        
+
         rare = new int[pcTotal];
+
         //load the downloaded pieces from the last download
         boolean load = loadDownloadHistory();
 
@@ -183,8 +185,7 @@ public class RUBTClient {
             ToolKit.printMap(trackerResponse, 5);
             int i = 99;
 
-            listener = new Listener(port,tiObject.info_hash,ByteBuffer.wrap(peerId.getBytes()), piecesHad.length());
-
+            listener = new Listener(port,tiObject.info_hash,ByteBuffer.wrap(peerId.getBytes()), pcTotal);
             (new Thread(listener)).start();
 
             for (HashMap<ByteBuffer,Object> p : tmp_peers) {
@@ -192,7 +193,7 @@ public class RUBTClient {
                 if ((new String(((ByteBuffer)p.get(PEER_IP)).array())).equals("128.6.171.130")  || (new String(((ByteBuffer)p.get(PEER_IP)).array())).equals("128.6.171.131")||(new String(((ByteBuffer)p.get(PEER_IP)).array())).equals("128.6.171.132")) {
                     ConnectionToPeer pc = new ConnectionToPeer(new String(((ByteBuffer)p.get(PEER_IP)).array()), (Integer) p.get(PEER_PORT), (ByteBuffer)p.get(PEER_ID),tiObject.info_hash,ByteBuffer.wrap(peerId.getBytes()));
                     pc.sendHandshake(tiObject.info_hash, ByteBuffer.wrap(peerId.getBytes()));
-                    Peer pr = new Peer((ByteBuffer) p.get(PEER_ID), pc, piecesHad.length());
+                    Peer pr = new Peer((ByteBuffer) p.get(PEER_ID), pc, pcTotal);
                     pr.handshook = false;
                     peers.put(pr.peerId, pr);
                     //
@@ -251,6 +252,10 @@ public class RUBTClient {
         System.out.println("The download is "+(100*downloaded / (downloaded+left))+ "% completed!!");
         
         System.out.println("Downloaded: "+downloaded+" bytes   Uploaded: "+uploaded+" bytes");
+        System.out.println();
+        for(Peer pr: peers.values()){
+            System.out.println("IP Address: "+pr.connection.ip+" Downloaded: "+pr.downloaded+" Uploaded: "+pr.uploaded+" Start time: "+pr.startTime);
+        }
         System.out.println("=============================================== \n");
         verify(); 
         synchronized (fileLock) {
@@ -314,7 +319,6 @@ public class RUBTClient {
                 //here, we are sure all the info match. So handshake is successfull now
                 ByteBuffer bf = getBitField();
                 if (bf != null && !pr.connection.ip.equalsIgnoreCase("128.6.171.132")) {
-                    //System.out.println("bitfield sent");
                     pr.connection.sendBitfield(bf);
                 }
                 
@@ -325,7 +329,7 @@ public class RUBTClient {
                         pr.connection.sendHave(pc.getIndex());
                     }
                 }
-
+                pr.startTime = (int) System.currentTimeMillis();
                 pr.handshook = true;
                 return;
             }
@@ -378,12 +382,14 @@ public class RUBTClient {
                     {
                         ByteBuffer data = p.getByteBuffer();
                         uploaded+=pcLength;
+                        pr.uploaded+=pcLength;
                         pr.connection.sendPiece(pcIndex, pcBegin, pcLength, data);
                     }
                 }else{
                     if(!pr.choking){
                         ByteBuffer data = p.getByteBuffer();
-                        uploaded+=pcLength;
+                        uploaded+=pcLength;                        
+                        pr.uploaded+=pcLength;
                         pr.connection.sendPiece(pcIndex, pcBegin, pcLength, data);
                     }
                 }
@@ -397,7 +403,7 @@ public class RUBTClient {
 
                 ((ByteBuffer)pc.getByteBuffer().position(begin)).put(msg.msg);
                 pc.putSlice(begin / Pieces.SLICE_SIZE);
-
+                pr.downloaded += msg.msg.limit();
                 int slice = pc.getNextSlice();
                 if (slice == -1) {
                     if (!pc.isLoadingSlices()) {
@@ -415,7 +421,6 @@ public class RUBTClient {
                 // Shouldn't happen...
         }
     }
-    
     
     /**
      * A method that chokes and unchokes peers periodically
@@ -569,8 +574,8 @@ public class RUBTClient {
             return;
         
         rare[index]++;
-    }
 
+    }
     /*
      * Send requests to other peers
      */
@@ -616,40 +621,24 @@ public class RUBTClient {
      * choose a piece for a specified peer
      */
     private static Pieces choosePiece(Peer pr) {
-        int[] pieceRanks = new int[pieces.size()];
 
-        for(Pieces piece : pieces) {
-            if (piece.getState() == Pieces.TorrentFilePiecesState.INCOMPLETE && pr.canGetPiece(piece.getIndex())) {
-                pieceRanks[piece.getIndex()] = 0;
-            } else {
-                pieceRanks[piece.getIndex()] = -1;
-            }
-        }
+        int rtn = -1;
 
-        for (Peer peer : peers.values()) {
-            for (Pieces piece : pieces) {
-                if (peer.canGetPiece(piece.getIndex()) && pieceRanks[piece.getIndex()] != -1) {
-                    pieceRanks[piece.getIndex()]++;
+        for(Pieces piece: pieces){
+            if(rare[piece.getIndex()]!=-1 && pr.canGetPiece(piece.getIndex()))
+            {
+                if(rtn == -1){
+                    rtn = piece.getIndex();
+                }else if(rare[piece.getIndex()] < rare[rtn]){
+                    rtn = piece.getIndex();
                 }
             }
         }
 
-        int leastPieceIndex = -1, leastPieceValue = -1;
-
-        for (int i = 0; i < pieceRanks.length; i++) {
-            if (leastPieceIndex == -1 && pieceRanks[i] != -1) {
-                leastPieceIndex = i;
-                leastPieceValue = pieceRanks[i];
-            }
-            else if (leastPieceValue != -1 && leastPieceValue > pieceRanks[i] && pieceRanks[i] != -1) {
-                leastPieceIndex = i;
-                leastPieceValue = pieceRanks[i];
-            }
-        }
-        if (leastPieceIndex == -1)
+        if(rtn == -1)
             return null;
 
-        return pieces.get(leastPieceIndex);
+        return pieces.get(rtn);
     }
 
     /**
@@ -675,6 +664,7 @@ public class RUBTClient {
                     fileByteBuffer.position(piece.getIndex() * tiObject.piece_length);
                     fileByteBuffer.put(piece.getByteBuffer());
                     piece.setState(Pieces.TorrentFilePiecesState.COMPLETE);
+                    rare[piece.getIndex()] = -1;
                     piecesHad.set(piece.getIndex());
                     for (Peer p : peers.values()) {
                         p.connection.sendHave(piece.getIndex());
