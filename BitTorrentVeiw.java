@@ -130,14 +130,9 @@ class BitTorrentView extends 	JFrame
 		// Create a new table instance
 		table = new JTable( dataValues, columnNames );
 		
-		
-
 		// Add the table to a scrolling pane
 		scrollPane = new JScrollPane( table );
 		centerPanel.add( scrollPane, BorderLayout.CENTER );
-		
-		
-
 		
 		pbar = new JProgressBar();
 	    pbar.setMinimum(MY_MINIMUM);
@@ -162,7 +157,13 @@ class BitTorrentView extends 	JFrame
 	{
 		//before everything... load the history download first
 		
-		
+		RUBTClient temp = RUBTClient.loadDownloadHistory();
+		try{
+			(new Thread(temp)).start();
+		}catch(Exception e)
+		{
+			e.printStackTrace();
+		}
 		// Create an instance of the test application
 		final BitTorrentView mainFrame	= new BitTorrentView();
 		mainFrame.setVisible( true );
