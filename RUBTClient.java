@@ -113,7 +113,7 @@ public class RUBTClient implements Runnable {
             trackerURL =tiObject.announce_url; 
             trackerResponse = announce("start", peerId, port, uploaded, downloaded, left, hash);
             ToolKit.printMap(trackerResponse, 5);
-            String destinationFile = "downloadedFile.mov";
+            String destinationFile = tiObject.file_name;
             try {
                 dataFile = new RandomAccessFile(destinationFile, "rw");
                 fileByteBuffer = dataFile.getChannel().map(FileChannel.MapMode.READ_WRITE, 0, (Integer)tiObject.info_map.get(TorrentInfo.KEY_LENGTH));
@@ -521,8 +521,21 @@ public class RUBTClient implements Runnable {
             }
         }
         bf.flip();
+        String name = "";
+        
+        for(int i = 0; i<tiObject.file_name.length();i++)
+        {
+        	if(Character.isLetterOrDigit(tiObject.file_name.charAt(i)))
+        	{
+        		name+=tiObject.file_name.charAt(i);
+        	}else{
+        		break;
+        	}
+        }
+        name+="hist.txt";
+        
         try{
-            File store = new File("Downloaded.txt");
+            File store = new File(name);
             FileChannel channel = new FileOutputStream(store, false).getChannel();
             channel.write(bf);
             channel.close();
@@ -543,9 +556,9 @@ public class RUBTClient implements Runnable {
     /*
      * This method loads the pieces that were downloaded from previous download
      */
-    public static RUBTClient loadDownloadHistory()
+    public static RUBTClient loadDownloadHistory(String name)
     {
-        URL url = ClassLoader.getSystemResource("Downloaded.txt");
+        URL url = ClassLoader.getSystemResource(name);
         byte[] data = null;
         if(url == null)
         {
@@ -847,7 +860,6 @@ private static ArrayList<Pieces> generatePieces() {
     {
         peers.put(pr.peerId, pr);
     }
-
 
     /**
      * Send an HTTP GET request to the tracker at the IP address and port
