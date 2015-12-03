@@ -25,6 +25,9 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.*;
+
+import javax.swing.SwingUtilities;
+
 import GivenTools.*;
 
 /**
@@ -63,12 +66,13 @@ public class RUBTClient {
     private static int pcTotal = 0;
     private static boolean sentComplete = false;
     public static boolean running = true;
+    
     private final static Object fileLock = new Object();
     private final static Object peerLock = new Object();
     private static RandomAccessFile dataFile;
     private static BitSet piecesHad = null;
     private static String hash = null;      // hash of the bencoded form of the info value from the metainfo file.
-    
+    private static Map<ByteBuffer, Object> trackerResponse = null;
     /**
      * Contains information from a TrackerResponse
      */
@@ -92,7 +96,30 @@ public class RUBTClient {
     private static Timer chokeTimer;
 
     private static int rare[] = null;
+    
+    public RUBTClient(File torrentFile)
+    {
+    	try{
+            System.out.println("a");
 
+    		long sizeOfFile = torrentFile.length();
+    		byte[] torrentFileData = new byte[(int) sizeOfFile];
+    		Path p = torrentFile.toPath();
+    		torrentFileData = Files.readAllBytes(p);
+    		tiObject = new TorrentInfo(torrentFileData);
+    		left = tiObject.file_length;    // The number of bytes this peer still has to download  
+            peerId = "adambittorrentclient";            // A string of length 20 generated which downloader uses as its id          
+            pieces = generatePieces();      // generate piece from torrent
+            hash = infoHash(tiObject.info_hash.array());
+            trackerURL =tiObject.announce_url; 
+            trackerResponse = announce("start", peerId, port, uploaded, downloaded, left, hash);
+            ToolKit.printMap(trackerResponse, 5);
+            System.out.println("das");
+    	}catch(Exception e)
+    	{
+    		e.printStackTrace();
+    	}
+    }
 
     /**
      * This is the main method that is called upon program startup, this method
@@ -105,53 +132,17 @@ public class RUBTClient {
      * @throws IOException
      * @throws BencodingException
      */
-    public static void main(String[] args) throws IOException, BencodingException {
+    public static void run() throws IOException, BencodingException {
     
         /*
          * The main method requires two command line arguments: The name of the
          * torrent file to load, and the name to the resulting file to save-as.
          */
-        if (args.length != 2) {
-            System.out.println("Incorrect number of arguments");
-            System.out.println("Correct Usage: java -cp . RUBTClient <.torrent file> <File to Save to>");
-            return;
-        }
-
         QuitMainThread qmt = new QuitMainThread("quit??");
         (new Thread(qmt)).start();
 
-        //to load the torrent file
-        URL url = ClassLoader.getSystemResource(args[0]);
-        byte[] data = null;
-        if(url == null)
-        {
-            System.out.println("Cannot find the path!");
-            return;
-        }
-        Path path = Paths.get(url.getPath());
-        try{
-            data = Files.readAllBytes(path);
-    
-        }catch(IOException e)
-        {
-            System.out.println("Cannot find the file"); 
-        }
+        String destinationFile = "downloadedFile.mov";
 
-        //trying to create a torrentInfo object from the torrent
-        try{    
-            tiObject = new TorrentInfo(data);
-        }catch(BencodingException e)
-        {
-            System.out.println("Torrent info cant be loaded");
-        }
-
-        String destinationFile = args[1];
-
-        left = tiObject.file_length;    // The number of bytes this peer still has to download  
-        peerId = "adambittorrentclient";            // A string of length 20 generated which downloader uses as its id          
-        pieces = generatePieces();      // generate piece from torrent
-        hash = infoHash(tiObject.info_hash.array());
-        trackerURL =tiObject.announce_url;  
         Listener listener = null; 
         
         try {
@@ -166,7 +157,7 @@ public class RUBTClient {
         rare = new int[pcTotal];
 
         //load the downloaded pieces from the last download
-        boolean load = loadDownloadHistory();
+        //boolean load = loadDownloadHistory();
 
         //choke and unchoke peers
         try{
@@ -180,9 +171,8 @@ public class RUBTClient {
 
 
             // Obtain list of peers from Tracker Response Object and finds the peers at IP address with peer_id prefix RUBT11
-            Map<ByteBuffer, Object> trackerResponse = announce("start", peerId, port, uploaded, downloaded, left, hash);
+            
             ArrayList<HashMap<ByteBuffer,Object>> tmp_peers = (ArrayList<HashMap<ByteBuffer, Object>>) trackerResponse.get(PEERS);
-            ToolKit.printMap(trackerResponse, 5);
             int i = 99;
 
             listener = new Listener(port,tiObject.info_hash,ByteBuffer.wrap(peerId.getBytes()), pcTotal);
@@ -239,7 +229,7 @@ public class RUBTClient {
         System.out.println("=============================================== \nExiting the Program now:\n");
         if(!isCompleted){
             storeTempPieces();
-        }else if(load)
+        }else if(false)
         {   
             try{
                 Process p = Runtime.getRuntime().exec("rm Downloaded.txt");
