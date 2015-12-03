@@ -2,6 +2,10 @@
 import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
+import java.net.URL;
+import java.util.HashMap;
+import java.nio.file.Paths;
+import java.nio.file.Path;
 
 import javax.swing.*;
 
@@ -13,6 +17,8 @@ class BitTorrentView extends 	JFrame
 	private	JScrollPane scrollPane;
 	private static File file = null;
 	JProgressBar pbar;
+	private static HashMap<Integer,RUBTClient> clients = new HashMap<Integer, RUBTClient>();
+	
 
 	static final int MY_MINIMUM = 0;
 
@@ -152,17 +158,35 @@ class BitTorrentView extends 	JFrame
 	    pbar.setValue(newValue);
 	  }
 	
-	// Main entry point for this example
-	public static void main(String[] args)
+	private static void download(String name)
 	{
-		//before everything... load the history download first
-		
-		RUBTClient temp = RUBTClient.loadDownloadHistory();
+		RUBTClient temp = RUBTClient.loadDownloadHistory(name);
 		try{
 			(new Thread(temp)).start();
 		}catch(Exception e)
 		{
 			e.printStackTrace();
+		}
+	}
+	
+	
+	// Main entry point for this example
+	public static void main(String[] args)
+	{
+		//before everything... load the history download first 
+		URL url = ClassLoader.getSystemResource(".");
+		Path path  = null;
+		if(url!=null){
+			path = Paths.get(url.getPath());
+		}
+		File[] files = new File(path.getFileName().toString()).listFiles();
+		if(files!=null)
+		{
+			for(File file : files)
+			{
+				if(file.getName().contains("hist.txt"))
+					download(file.getName());
+			}
 		}
 		// Create an instance of the test application
 		final BitTorrentView mainFrame	= new BitTorrentView();
