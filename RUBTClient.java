@@ -3,6 +3,7 @@ import java.io.*;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
 import java.util.HashMap;
+import java.nio.charset.Charset;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.File;
@@ -26,7 +27,7 @@ import java.util.Random;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.*;
 
-import javax.swing.SwingUtilities;
+import java.lang.instrument.Instrumentation;
 
 import GivenTools.*;
 
@@ -42,7 +43,7 @@ import GivenTools.*;
  * @author ZHANPENG HE, MANISH PATEL, JOHN NELSON
  *
  */
-public class RUBTClient {
+public class RUBTClient implements Runnable {
 
     private static ConcurrentLinkedQueue<Message> messages = new ConcurrentLinkedQueue<Message>();
     private static HashMap<ByteBuffer,Peer> peers = new HashMap<ByteBuffer, Peer>();
@@ -94,31 +95,67 @@ public class RUBTClient {
     private static int initiateTime = 0;
     private static int finishTime = 0;
     private static Timer chokeTimer;
-
+    private static byte[] torrentFileData = null;
     private static int rare[] = null;
     
     public RUBTClient(File torrentFile)
     {
     	try{
-            System.out.println("a");
-
     		long sizeOfFile = torrentFile.length();
-    		byte[] torrentFileData = new byte[(int) sizeOfFile];
+    		torrentFileData = new byte[(int) sizeOfFile];
     		Path p = torrentFile.toPath();
     		torrentFileData = Files.readAllBytes(p);
-    		tiObject = new TorrentInfo(torrentFileData);
-    		left = tiObject.file_length;    // The number of bytes this peer still has to download  
-            peerId = "adambittorrentclient";            // A string of length 20 generated which downloader uses as its id          
+    		this.tiObject = new TorrentInfo(torrentFileData);
+    		this.left = this.tiObject.file_length;    // The number of bytes this peer still has to download  
+            this.peerId = "adambittorrentclient";            // A string of length 20 generated which downloader uses as its id          
             pieces = generatePieces();      // generate piece from torrent
             hash = infoHash(tiObject.info_hash.array());
             trackerURL =tiObject.announce_url; 
             trackerResponse = announce("start", peerId, port, uploaded, downloaded, left, hash);
             ToolKit.printMap(trackerResponse, 5);
-            System.out.println("das");
+            String destinationFile = "downloadedFile.mov";
+            try {
+                dataFile = new RandomAccessFile(destinationFile, "rw");
+                fileByteBuffer = dataFile.getChannel().map(FileChannel.MapMode.READ_WRITE, 0, (Integer)tiObject.info_map.get(TorrentInfo.KEY_LENGTH));
+            } catch (FileNotFoundException e) {
+                System.err.println("FileNotFound exception occure while opening the destinationFile to write");
+            } catch (IOException e) {
+                System.err.println("IO exception occure while opening the destinationFile to write");
+            }
+
+            rare = new int[pcTotal];
     	}catch(Exception e)
     	{
     		e.printStackTrace();
     	}
+    }
+    
+    public RUBTClient(ByteBuffer data)
+    {
+    	try{
+    		this.torrentFileData = data.array();
+    		this.tiObject = new TorrentInfo(torrentFileData);
+    		this.left = this.tiObject.file_length;    // The number of bytes this peer still has to download  
+    		this.peerId = "adambittorrentclient";            // A string of length 20 generated which downloader uses as its id          
+    		pieces = generatePieces();      // generate piece from torrent
+    		hash = infoHash(tiObject.info_hash.array());
+    		trackerURL =tiObject.announce_url; 
+        	trackerResponse = announce("start", peerId, port, uploaded, downloaded, left, hash);
+        	String destinationFile = "downloadedFile.mov";
+            try {
+                dataFile = new RandomAccessFile(destinationFile, "rw");
+                fileByteBuffer = dataFile.getChannel().map(FileChannel.MapMode.READ_WRITE, 0, (Integer)tiObject.info_map.get(TorrentInfo.KEY_LENGTH));
+            } catch (FileNotFoundException e) {
+                System.err.println("FileNotFound exception occure while opening the destinationFile to write");
+            } catch (IOException e) {
+                System.err.println("IO exception occure while opening the destinationFile to write");
+            }
+
+            rare = new int[pcTotal];
+    	}catch(Exception e){
+        	e.printStackTrace();
+        }
+        ToolKit.printMap(trackerResponse, 5);
     }
 
     /**
@@ -132,7 +169,7 @@ public class RUBTClient {
      * @throws IOException
      * @throws BencodingException
      */
-    public static void run() throws IOException, BencodingException {
+    public void run() {
     
         /*
          * The main method requires two command line arguments: The name of the
@@ -141,24 +178,8 @@ public class RUBTClient {
         QuitMainThread qmt = new QuitMainThread("quit??");
         (new Thread(qmt)).start();
 
-        String destinationFile = "downloadedFile.mov";
-
         Listener listener = null; 
-        
-        try {
-            dataFile = new RandomAccessFile(destinationFile, "rw");
-            fileByteBuffer = dataFile.getChannel().map(FileChannel.MapMode.READ_WRITE, 0, (Integer)tiObject.info_map.get(TorrentInfo.KEY_LENGTH));
-        } catch (FileNotFoundException e) {
-            System.err.println("FileNotFound exception occure while opening the destinationFile to write");
-        } catch (IOException e) {
-            System.err.println("IO exception occure while opening the destinationFile to write");
-        }
-
-        rare = new int[pcTotal];
-
-        //load the downloaded pieces from the last download
-        //boolean load = loadDownloadHistory();
-
+    
         //choke and unchoke peers
         try{
             chokeTimer = new Timer("Choke Timer", true);
@@ -473,11 +494,20 @@ public class RUBTClient {
             }
         }
         if(totalSize == 0) return;
-
-        totalSize +=4;
-
+        
+        // start storing stuff here
+        
+        totalSize+=4; //for the size of torrent file data
+        ByteBuffer temp = ByteBuffer.wrap(torrentFileData);
+        temp.position(0);
+        System.out.println("Storing the torrent file data......."+temp.limit()+"bytes");
+        totalSize+=temp.limit();
+        totalSize+=4;	// for uploaded
+        
         ByteBuffer bf = ByteBuffer.allocate(totalSize);
         bf.position(0);
+        bf.putInt(temp.limit());
+        bf.put(temp);
         bf.putInt(uploaded);
         int had = 0;
         for(Pieces pc : pieces)
@@ -513,14 +543,14 @@ public class RUBTClient {
     /*
      * This method loads the pieces that were downloaded from previous download
      */
-    public static boolean loadDownloadHistory()
+    public static RUBTClient loadDownloadHistory()
     {
         URL url = ClassLoader.getSystemResource("Downloaded.txt");
         byte[] data = null;
         if(url == null)
         {
             System.out.println("\nNo piece was downloaded before. Starting new download now.");
-            return false;
+            return null;
         }
         Path path = Paths.get(url.getPath());
         try{
@@ -529,14 +559,23 @@ public class RUBTClient {
         }catch(IOException e)
         {
             System.out.println("\nError: Cannot read the Downloaded History!"); 
-            return false;
+            return null;
         }
 
         ByteBuffer history = ByteBuffer.wrap(data);
-        if(history.limit()<=0) return false;
+        if(history.limit()<=0) return null;
+        
+        
+        int torrentFileLength = history.getInt();
+        byte[] temp = new byte[torrentFileLength];
+        
+        
+        history.get(temp);
+        RUBTClient cl = new RUBTClient(ByteBuffer.wrap(temp));
 
-        uploaded += history.getInt();
+        cl.uploaded += history.getInt();
 
+        
         int had = 0;
 
         while(history.hasRemaining())
@@ -545,9 +584,9 @@ public class RUBTClient {
             int size = history.getInt();
             byte[] piece = new byte[size];
             history.get(piece, 0, size);
-            Pieces pc = pieces.get(index);
+            Pieces pc = cl.pieces.get(index);
             ((ByteBuffer)pc.getByteBuffer().position(0)).put(ByteBuffer.wrap(piece));
-            putPiece(pc);
+            cl.putPiece(pc);
             had++;
         }
         if(had==1)  
@@ -555,7 +594,7 @@ public class RUBTClient {
         else 
             System.out.println("\nPiece 0~"+(had-1)+" are loaded from the previous download");
         
-        return true;
+        return cl;
     }
 
     public static void setRare(int index)
