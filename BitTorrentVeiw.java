@@ -5,13 +5,13 @@ import java.io.File;
 
 import javax.swing.*;
 
-class BitTorrentView
-		extends 	JFrame
+class BitTorrentView extends 	JFrame
 {
 	// Instance attributes used in this example
 	private	JPanel		centerPanel;
 	private	JTable		table;
 	private	JScrollPane scrollPane;
+	private static File file = null;
 	JProgressBar pbar;
 
 	static final int MY_MINIMUM = 0;
@@ -48,8 +48,15 @@ class BitTorrentView
 	            
 
 	            if (returnVal == JFileChooser.APPROVE_OPTION) {
-	                File file = fc.getSelectedFile();
+	                file = fc.getSelectedFile();
 	                System.out.println(file.getName());
+	        		RUBTClient client = new RUBTClient(file);
+	        		try{
+	        			client.run();
+	        		}catch(Exception e)
+	        		{
+	        			e.printStackTrace();
+	        		}
 	                //This is where a real application would open the file.
 	                log.append("Opening: " + file.getName() + "." + newline);
 	            } else {
@@ -151,10 +158,13 @@ class BitTorrentView
 	  }
 	
 	// Main entry point for this example
-	public static void main( String args[] )
+	public static void main(String[] args)
 	{
+		//before everything... load the history download first
+		
+		
 		// Create an instance of the test application
-		BitTorrentView mainFrame	= new BitTorrentView();
+		final BitTorrentView mainFrame	= new BitTorrentView();
 		mainFrame.setVisible( true );
 		mainFrame.setSize(900, 300);
 		
