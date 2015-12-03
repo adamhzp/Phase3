@@ -158,9 +158,10 @@ class BitTorrentView extends 	JFrame
 	    pbar.setValue(newValue);
 	  }
 	
-	private static void download(String name)
+	private static void download(String name, int i)
 	{
 		RUBTClient temp = RUBTClient.loadDownloadHistory(name);
+		clients.put(i, temp);
 		try{
 			(new Thread(temp)).start();
 		}catch(Exception e)
@@ -180,12 +181,14 @@ class BitTorrentView extends 	JFrame
 			path = Paths.get(url.getPath());
 		}
 		File[] files = new File(path.getFileName().toString()).listFiles();
+		int index = 1;
 		if(files!=null)
 		{
 			for(File file : files)
 			{
 				if(file.getName().contains("hist.txt"))
-					download(file.getName());
+					download(file.getName(),index);
+				index++;
 			}
 		}
 		// Create an instance of the test application
