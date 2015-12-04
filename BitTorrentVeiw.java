@@ -175,22 +175,20 @@ class BitTorrentView extends 	JFrame
 	public static void main(String[] args)
 	{
 		//before everything... load the history download first 
-		URL url = ClassLoader.getSystemResource(".");
-		Path path  = null;
-		if(url!=null){
-			path = Paths.get(url.getPath());
-		}
-		File[] files = new File(path.getFileName().toString()).listFiles();
+		File[] files = new File(Paths.get(".").toAbsolutePath().normalize().toString()).listFiles();
 		int index = 1;
 		if(files!=null)
 		{
 			for(File file : files)
 			{
+                System.out.println(file.getName());
 				if(file.getName().contains("hist.txt"))
 					download(file.getName(),index);
 				index++;
 			}
-		}
+        }else{
+            System.out.println("null");
+        }
 		// Create an instance of the test application
 		final BitTorrentView mainFrame	= new BitTorrentView();
 		mainFrame.setVisible( true );
