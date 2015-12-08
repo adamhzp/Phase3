@@ -98,9 +98,8 @@ public class Download implements Runnable{
             this.peerId = "adambittorrentclient";            // A string of length 20 generated which downloader uses as its id          
             pieces = generatePieces();      // generate piece from torrent
             hash = infoHash(tiObject.info_hash.array());
-            trackerURL =tiObject.announce_url; 
-            trackerResponse = announce("start", peerId, port, uploaded, downloaded, left, hash);
-            ToolKit.printMap(trackerResponse, 5);
+            trackerURL =tiObject.announce_url;
+            rare = new int[pcTotal];
             String destinationFile = tiObject.file_name;
             try {
                 dataFile = new RandomAccessFile(destinationFile, "rw");
@@ -110,8 +109,21 @@ public class Download implements Runnable{
             } catch (IOException e) {
                 System.err.println("IO exception occure while opening the destinationFile to write");
             }
-
-            rare = new int[pcTotal];
+            //load history here 
+            String name = "";
+            for(int i = 0; i<tiObject.file_name.length();i++)
+            {
+                if(Character.isLetterOrDigit(tiObject.file_name.charAt(i)))
+                {
+                    name+=tiObject.file_name.charAt(i);
+                }else{
+                    break;
+                }
+            }
+            name+="hist.txt";
+            loadHistory(name);
+            trackerResponse = announce("start", peerId, port, uploaded, downloaded, left, hash);
+            ToolKit.printMap(trackerResponse, 5);
     	}catch(Exception e)
     	{
     		e.printStackTrace();
@@ -551,7 +563,7 @@ public class Download implements Runnable{
         try{
             data = Files.readAllBytes(path);
     
-        }catch(IOException e)
+        }catch(Exception e)
         {
             System.out.println("\nError: Cannot read the Downloaded History!"); 
             return null;
@@ -592,6 +604,52 @@ public class Download implements Runnable{
         return cl;
     }
 
+public boolean loadHistory(String name)
+    {
+        URL url = ClassLoader.getSystemResource(name);
+        byte[] data = null;
+        if(url == null)
+        {
+            System.out.println("\nNo piece was downloaded before. Starting new download now.");
+            return false;
+        }
+        Path path = Paths.get(url.getPath());
+        try{
+            data = Files.readAllBytes(path);
+    
+        }catch(IOException e)
+        {
+            System.out.println("\nError: Cannot read the Downloaded History!"); 
+            return false;
+        }
+
+        ByteBuffer history = ByteBuffer.wrap(data);
+        if(history.limit()<=0) return false;
+        int torrentFileLength = history.getInt();
+        byte[] temp = new byte[torrentFileLength];
+        history.get(temp);
+        uploaded += history.getInt();
+
+        int had = 0;
+
+        while(history.hasRemaining())
+        {
+            int index = history.getInt();
+            int size = history.getInt();
+            byte[] piece = new byte[size];
+            history.get(piece, 0, size);
+            Pieces pc = pieces.get(index);
+            ((ByteBuffer)pc.getByteBuffer().position(0)).put(ByteBuffer.wrap(piece));
+            putPiece(pc);
+            had++;
+        }
+        if(had==1)  
+            System.out.println("\nPiece 0 is loaded from the previous download");
+        else 
+            System.out.println("\nPiece 0~"+(had-1)+" are loaded from the previous download");
+        
+        return true;
+    }
     public  void setRare(int index)
     {
         if(rare[index] == -1)
