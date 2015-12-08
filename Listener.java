@@ -53,25 +53,26 @@ public class Listener implements Runnable{
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
+			System.out.println("Listener running");
+			if(!running)
+				break;
 			Socket client = null;
 			try{
 				 client = server.accept();
-			}catch(IOException e)
+			}catch(Exception e)
 			{
-				e.printStackTrace();
+				System.out.println("server is closed!");
 			}
-
+			System.out.println("as");
 			//create a connectionToPeer object and start communication
-			ConnectionToPeer pc = new ConnectionToPeer(client, this.selfInfoHash, this.selfId, this.pieces);			
-			(new Thread(pc)).start();
-		}
-		
-			try{
-				server.close();
-			}catch(IOException e)
-			{
-				e.printStackTrace();
+			if(client != null){
+				ConnectionToPeer pc = new ConnectionToPeer(client, this.selfInfoHash, this.selfId, this.pieces);			
+				(new Thread(pc)).start();
 			}
+			
+		}
+		System.out.println("listener is shut");
+			
 		
 	}
 
@@ -82,6 +83,12 @@ public class Listener implements Runnable{
 	public void shutDown()
 	{
 		this.running = false;
+		try{
+			server.close();
+		}catch(IOException e)
+		{
+			e.printStackTrace();
+		}
 	}
 
 }
