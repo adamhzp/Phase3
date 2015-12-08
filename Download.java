@@ -163,9 +163,6 @@ public class Download implements Runnable{
          * The main method requires two command line arguments: The name of the
          * torrent file to load, and the name to the resulting file to save-as.
          */
-        QuitMainThread qmt = new QuitMainThread("quit??", this);
-        (new Thread(qmt)).start();
-
         Listener listener = null; 
     
         //choke and unchoke peers
