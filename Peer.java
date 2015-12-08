@@ -17,16 +17,18 @@ public class Peer {
     public int downloaded = 0;
     public int uploaded = 0;
     public int startTime = 0;
+    private Download dl = null;
 
     /**
      * Constructor Peer object
      * @param peerId The peer id for this peer object
      * @param peerConnection Peer Connection with the specified ip and port
      */
-    public Peer(ByteBuffer peerId, ConnectionToPeer peerConnection, int pieces) {
+    public Peer(ByteBuffer peerId, ConnectionToPeer peerConnection, int pieces, Download dl) {
         this.peerId = peerId.duplicate();
         this.connection = peerConnection;
         this.rareUpdated = new BitSet(pieces);
+        this.dl = dl;
     }
 
     /**
@@ -39,7 +41,7 @@ public class Peer {
         {
             try{
                 if(!this.rareUpdated.get(i) && availablePieces.get(i)){
-                    RUBTClient.setRare(i);
+                    dl.setRare(i);
                     this.rareUpdated.set(i);
                 }
             }catch(IndexOutOfBoundsException e)
@@ -65,7 +67,7 @@ public class Peer {
         this.availablePieces.set(index);
         try{
             if(!this.rareUpdated.get(index) && availablePieces.get(index)){
-                RUBTClient.setRare(index);
+                dl.setRare(index);
                 this.rareUpdated.set(index);
             }
         }catch(IndexOutOfBoundsException e)
