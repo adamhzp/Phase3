@@ -16,6 +16,7 @@ public class Listener implements Runnable{
 	private ByteBuffer selfInfoHash = null;
 	private ByteBuffer selfId = null;
 	private int pieces;
+	private Download dl = null;
 
 	/**
 	 * Constructor for the runnable class Listener
@@ -25,9 +26,10 @@ public class Listener implements Runnable{
 	 * @param pieces The total number of pieces
 	 */
 	
-	public Listener(int port, ByteBuffer infoHash, ByteBuffer id, int pieces)
+	public Listener(int port, ByteBuffer infoHash, ByteBuffer id, int pieces, Download dl)
 	{
 		this.port = port;
+		this.dl = dl;
 		this.selfInfoHash = infoHash.duplicate();
 		this.selfId = id.duplicate();
 		this.pieces = pieces;
@@ -53,27 +55,20 @@ public class Listener implements Runnable{
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
-			System.out.println("Listener running");
-			if(!running)
-				break;
 			Socket client = null;
 			try{
 				 client = server.accept();
 			}catch(Exception e)
 			{
-				System.out.println("server is closed!");
+				break;
 			}
-			System.out.println("as");
+
 			//create a connectionToPeer object and start communication
-			if(client != null){
-				ConnectionToPeer pc = new ConnectionToPeer(client, this.selfInfoHash, this.selfId, this.pieces);			
-				(new Thread(pc)).start();
-			}
-			
+			ConnectionToPeer pc = new ConnectionToPeer(client, this.selfInfoHash, this.selfId, this.pieces, dl);			
+			(new Thread(pc)).start();
 		}
-		System.out.println("listener is shut");
-			
 		
+					
 	}
 
 	/**
@@ -89,6 +84,7 @@ public class Listener implements Runnable{
 		{
 			e.printStackTrace();
 		}
+
 	}
 
 }
