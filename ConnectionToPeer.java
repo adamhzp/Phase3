@@ -35,7 +35,7 @@ public class ConnectionToPeer implements Runnable {
     private boolean handshakeDone = false;
     private ByteBuffer peerId = null;
     private boolean isIncomingConnection = false;
-
+    private Download dl = null;
 
     private ByteBuffer selfInfoHash = null;
     private ByteBuffer selfPeerId = null;
@@ -52,10 +52,11 @@ public class ConnectionToPeer implements Runnable {
         @param peerId The peerId of the peer to connect to
     */
 
-    public ConnectionToPeer(String ip, int port, ByteBuffer peerId, ByteBuffer infoHash, ByteBuffer id) {
+    public ConnectionToPeer(String ip, int port, ByteBuffer peerId, ByteBuffer infoHash, ByteBuffer id, Download dl) {
         this.ip = ip;
         this.peerId = peerId.duplicate();
         this.port = port;
+        this.dl = dl;
         this.selfInfoHash = infoHash.duplicate();
         this.selfPeerId = id.duplicate();
         this.keepaliveTimer = new Timer(ip + " keepaliveTimer", true);
@@ -70,7 +71,7 @@ public class ConnectionToPeer implements Runnable {
      * @param pieces The total number of pieces 
      */
 
-    public ConnectionToPeer(Socket incomingConnection, ByteBuffer infoHash, ByteBuffer id, int pieces)
+    public ConnectionToPeer(Socket incomingConnection, ByteBuffer infoHash, ByteBuffer id, int pieces, Download dl)
     {
 
         socket = incomingConnection;
@@ -79,6 +80,7 @@ public class ConnectionToPeer implements Runnable {
         this.ip = socket.getRemoteSocketAddress().toString();
         this.selfInfoHash = infoHash.duplicate();
         this.selfPeerId = id.duplicate();
+        this.dl = dl;
         this.pieces = pieces;
         this.keepaliveTimer = new Timer(ip + " keepaliveTimer", true);
 
@@ -149,7 +151,7 @@ public class ConnectionToPeer implements Runnable {
                             // Pass the message to the Peer object.
                             Message peerMessage = processHandshake(msgBuf);
                             if (peerMessage != null) {
-                                RUBTClient.recvMessage(peerMessage);
+                                dl.recvMessage(peerMessage);
                             }
                             handshakeDone = true;
                         }
@@ -166,16 +168,16 @@ public class ConnectionToPeer implements Runnable {
                             this.peerId = ByteBuffer.wrap(pid);
                             sendHandshake(this.selfInfoHash, this.selfPeerId);
 
-                            Peer newP = new Peer(this.peerId, this, this.pieces);
+                            Peer newP = new Peer(this.peerId, this, this.pieces, this.dl);
                             newP.handshook = false;
                             temp.flip();
                             temp.position(0);
 
                             //add the peer to RUBTClient thread
-                            RUBTClient.addPeer(newP);
+                            dl.addPeer(newP);
                             Message peerMessage = processHandshake(temp);
                             if (peerMessage != null) {
-                                RUBTClient.recvMessage(peerMessage);
+                                dl.recvMessage(peerMessage);
                             }
                             
                             handshakeDone = true;
@@ -196,7 +198,7 @@ public class ConnectionToPeer implements Runnable {
 
                         Message peerMessage = processMessage(msgBuf);
                         if (peerMessage != null) {
-                            RUBTClient.recvMessage(peerMessage);
+                            dl.recvMessage(peerMessage);
                         }
                     }
                 }
