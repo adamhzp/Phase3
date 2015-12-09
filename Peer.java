@@ -13,7 +13,6 @@ public class Peer {
     public ConnectionToPeer connection;
     public ByteBuffer peerId;
     private BitSet availablePieces = new BitSet();
-    public BitSet rareUpdated = null;
     public int downloaded = 0;
     public int uploaded = 0;
     public int startTime = 0;
@@ -27,7 +26,6 @@ public class Peer {
     public Peer(ByteBuffer peerId, ConnectionToPeer peerConnection, int pieces, Download dl) {
         this.peerId = peerId.duplicate();
         this.connection = peerConnection;
-        this.rareUpdated = new BitSet(pieces);
         this.dl = dl;
     }
 
@@ -37,18 +35,6 @@ public class Peer {
      */
     public void setAvailablePieces(BitSet availablePieces) {
         this.availablePieces = availablePieces;
-        for(int i = 0;i<availablePieces.length(); i++)
-        {
-            try{
-                if(!this.rareUpdated.get(i) && availablePieces.get(i)){
-                    dl.setRare(i);
-                    this.rareUpdated.set(i);
-                }
-            }catch(IndexOutOfBoundsException e)
-            {
-                e.printStackTrace();
-            }
-        }
     }
 
     /**
@@ -64,16 +50,7 @@ public class Peer {
      * @param index Index of the available piece
      */
     public void setPieceAvailable(int index) {
-        this.availablePieces.set(index);
-        try{
-            if(!this.rareUpdated.get(index) && availablePieces.get(index)){
-                dl.setRare(index);
-                this.rareUpdated.set(index);
-            }
-        }catch(IndexOutOfBoundsException e)
-        {
-            e.printStackTrace();
-        }    
+        this.availablePieces.set(index);  
     }
 
     public double getPerformance(int endTime)
