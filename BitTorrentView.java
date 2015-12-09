@@ -55,6 +55,7 @@ class BitTorrentView extends JFrame
 	private static ArrayList<waitObj> waiting = new ArrayList<waitObj>(); 
 	public static Download running = null;
 	public  static int used =0;
+	public static JToggleButton tglbtnStart = null;
 
 	// Constructor of main frame
 	public BitTorrentView() {
@@ -107,7 +108,7 @@ class BitTorrentView extends JFrame
 	    
 		JButton btnBrowse = new JButton("");
 		btnBrowse.setSelected(true);
-		btnBrowse.setIcon(new ImageIcon("C:\\Users\\MANISH\\workspace\\GUIDemo\\Open16.gif"));
+		btnBrowse.setIcon(new ImageIcon("open.gif"));
 		btnBrowse.setHorizontalTextPosition(SwingConstants.CENTER);
 		btnBrowse.setAlignmentX(Component.CENTER_ALIGNMENT);
 		//Create a file chooser
@@ -128,10 +129,10 @@ class BitTorrentView extends JFrame
 			}
 		});
 		getContentPane().setLayout(null);
-		btnBrowse.setBounds(10, 11, 40, 25);
+		btnBrowse.setBounds(10, 11, 40, 33);
 		getContentPane().add(btnBrowse);
 		
-		final JToggleButton tglbtnStart = new JToggleButton(new ImageIcon("C:\\Users\\MANISH\\workspace\\GUIDemo\\Start.png"));
+		tglbtnStart = new JToggleButton(new ImageIcon("run.jpg"));
 		tglbtnStart.setPreferredSize(new Dimension(40, 33));
 		tglbtnStart.setMinimumSize(new Dimension(40, 33));
 		tglbtnStart.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -151,11 +152,9 @@ class BitTorrentView extends JFrame
             		}
             		name+="hist.txt";
             		waiting.add(new waitObj(1,name,null));
-					tglbtnStart.setText("Pause");
+	        	tglbtnStart.setIcon(new ImageIcon("pause.jpg"));
 					running.running = false;
 					running = null;
-					//tglbtnStart.setIcon(new ImageIcon("C:\\Users\\MANISH\\workspace\\GUIDemo\\Pause.png"));
-					//do stuff when Start is clicked
 				}else{
 
 					if(waiting.size()>0){
@@ -166,29 +165,17 @@ class BitTorrentView extends JFrame
 						{
 							down(temp.name ,1);
 						}
-						tglbtnStart.setText("Start");
+	        	tglbtnStart.setIcon(new ImageIcon("run.jpg"));
 					}
-					//tglbtnStart.setIcon(new ImageIcon("C:\\Users\\MANISH\\workspace\\GUIDemo\\Start.png"));
-					//do stuff when pause clicked
 				}
 			}
 		});
-		tglbtnStart.setBounds(112, 11, 40, 25);
+		tglbtnStart.setBounds(112, 11, 40, 33);
 		getContentPane().add(tglbtnStart);
 		
-		JButton btnRemove = new JButton("");
-		btnRemove.setHorizontalTextPosition(SwingConstants.CENTER);
-		btnRemove.setIcon(new ImageIcon("C:\\Users\\MANISH\\workspace\\GUIDemo\\Delete.png"));
-		btnRemove.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				//do stuff when remove btn is clicked
-			}
-		});
-		btnRemove.setBounds(148, 11, 40, 25);
-		getContentPane().add(btnRemove);
 		
 		JScrollPane scrollPane = new JScrollPane();
-		scrollPane.setBounds(10, 216, 714, 93);
+		scrollPane.setBounds(10, 216, 924, 93);
 		getContentPane().add(scrollPane);
 		
 		log = new JTextArea();
@@ -343,6 +330,7 @@ class BitTorrentView extends JFrame
 			clients.put(i, running);
 			try{
 				(new Thread(running)).start();
+				tglbtnStart.setIcon(new ImageIcon("run.jpg"));
 				dataValues[0] = running.tiObject.file_name;
 				table.setValueAt(dataValues[0],0,0);
 				dataValues[1]=twoDForm.format(running.tiObject.file_length/1024);
@@ -354,28 +342,29 @@ class BitTorrentView extends JFrame
 				e.printStackTrace();
 			}
 		}else{
-			Download temp = Download.loadDownloadHistory(name);
+			/*Download temp = Download.loadDownloadHistory(name);
 			Object[] o = new Object[8];
 			o[0] = temp.tiObject.file_name;
 			o[1] = temp.tiObject.file_length/1024;
-			waiting.add(new waitObj(0, name, null));
+			waiting.add(new waitObj(0, name, null));*/
 		}
 	}
 
 	private void download(File f)
 	{	
 		if(running != null){
-			waiting.add(new waitObj(0,null, f));
+			/*waiting.add(new waitObj(0,null, f));
 			Download temp = new Download(f);
 			Object[] o = new Object[8];
 			o[0] = temp.tiObject.file_name;
 			o[1] = temp.tiObject.file_length/1024;
-			tableModel.addRow(o);
+			tableModel.addRow(o);*/
 			return;
 		}
 		running = new Download(f);
 	    try{
 	        	(new Thread(running)).start();
+	        	tglbtnStart.setIcon(new ImageIcon("run.jpg"));
 	        	updateView up = new updateView(running, 0);
 				(new Thread(up)).start();
 	    }catch(Exception a)
@@ -440,7 +429,6 @@ class updateView implements Runnable{
 		}
 	}catch(Exception e)
 	{
-		e.printStackTrace();
 	}
 	}
 
