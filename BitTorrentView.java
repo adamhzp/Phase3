@@ -43,12 +43,12 @@ class BitTorrentView extends 	JFrame
 	protected JTextArea log;
 	static private final String newline = "\n";
 	JFrame frame;
-	private JTable table;
+	private static JTable table;
 	MyProgressBar pro;
 	MyTableModel tableModel;
 	// Create some data
-	Object dataValues[] = { "", "","", "", "","", "", "", "" };
-	DecimalFormat twoDForm = new DecimalFormat("#.##");
+	public static Object dataValues[] = { "", "","", "", "","", "", "", "" };
+	public static DecimalFormat twoDForm = new DecimalFormat("#.##");
 	private static HashMap<Integer,Download> clients = new HashMap<Integer, Download>();
 
 	public static Download running = null;
@@ -59,6 +59,7 @@ class BitTorrentView extends 	JFrame
 		getContentPane().setSize(new Dimension(450, 300));
 		setSize(new Dimension(750, 355));
 		setTitle("ZMJTorrent");
+		System.out.println("init!");
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		initialize();
 	}
@@ -267,6 +268,15 @@ class BitTorrentView extends 	JFrame
 	// Main entry point for this example
 	public static void main(String[] args)
 	{
+
+				try {
+					BitTorrentView window = new BitTorrentView();
+					window.setVisible(true);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			
+			
 		//before everything... load the history download first 
 
 		File[] files = new File(Paths.get(".").toAbsolutePath().normalize().toString()).listFiles();
@@ -285,26 +295,21 @@ class BitTorrentView extends 	JFrame
         	System.out.println("\nNo history file.");
         }
 		
-		EventQueue.invokeLater(new Runnable() {
-			public void run() {
-				try {
-					BitTorrentView window = new BitTorrentView();
-					window.setVisible(true);
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
-		});	
 		
 	}
 	
 	private static void down(String name, int i)
 	{
 		if(running == null){
+					System.out.println("afs");
+
 			running = Download.loadDownloadHistory(name);
-			clients.put(i, running	);
+			clients.put(i, running);
 			try{
 				(new Thread(running)).start();
+				table.setValueAt(dataValues[0],0,0);
+				dataValues[1]=twoDForm.format(running.tiObject.file_length/1024);
+				table.setValueAt(dataValues[1], 0, 1);
 			}catch(Exception e)
 			{
 				e.printStackTrace();
@@ -319,7 +324,6 @@ class BitTorrentView extends 	JFrame
 		Download client = new Download(f);
 	    try{
 	        	(new Thread(client)).start();
-	        	System.out.println("running dl!");
 	    }catch(Exception a)
 	    {
 	    }
