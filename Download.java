@@ -44,9 +44,9 @@ public class Download implements Runnable{
      * */
     private String peerId;           // A string of length 20 which this downloader uses as its id. 
     private  int  port = 6883;        // The port number this peer is listening on.
-    private  int uploaded = 0;        // The total amount uploaded so far
-    private  int downloaded = 0;      // The total amount downloaded so far
-    private  int left = 0;            // The number of bytes this peer still has to downloaded
+    public  int uploaded = 0;        // The total amount uploaded so far
+    public  int downloaded = 0;      // The total amount downloaded so far
+    public  int left = 0;            // The number of bytes this peer still has to downloaded
     private  String event=null;       // This is an optional key which maps to started , completed , stopped or null
     private  long lastAnnounce = 0;
     private  int minInterval = 0;
@@ -220,7 +220,7 @@ public class Download implements Runnable{
             lastAnnounce = System.currentTimeMillis();
             if(running == false)
                 System.out.println("running == false ???");    
-            while (running) {
+            while(running) {
                 //keep tracker updated!!!
                 if ((System.currentTimeMillis() - lastAnnounce) >= (minInterval - 5000)) {
                     announce(null, peerId, port, uploaded, downloaded, left, hash);
@@ -243,7 +243,7 @@ public class Download implements Runnable{
         } catch (Exception e) {
             e.printStackTrace();
     } finally {
-        System.out.println("=============================================== \nExiting the Program now:\n");
+        System.out.println("\n=============================================== \nExiting the Program now:\n");
         if(!isCompleted){
             storeTempPieces();
         }else if(false)
