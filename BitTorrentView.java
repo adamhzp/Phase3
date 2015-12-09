@@ -38,7 +38,7 @@ import javax.swing.*;
 class BitTorrentView extends 	JFrame
 {
 	// Instance attributes used in this example
-	public JFileChooser fc;
+	public static JFileChooser fc;
 	protected File file;
 	protected JTextArea log;
 	static private final String newline = "\n";
@@ -49,7 +49,9 @@ class BitTorrentView extends 	JFrame
 	// Create some data
 	Object dataValues[] = { "", "","", "", "","", "", "", "" };
 	DecimalFormat twoDForm = new DecimalFormat("#.##");
-	private static HashMap<Integer,RUBTClient> clients = new HashMap<Integer, RUBTClient>();
+	private static HashMap<Integer,Download> clients = new HashMap<Integer, Download>();
+
+	public static Download running = null;
 
 	// Constructor of main frame
 	public BitTorrentView() {
@@ -95,18 +97,7 @@ class BitTorrentView extends 	JFrame
 	            if (returnVal == JFileChooser.APPROVE_OPTION) {
 	                file = fc.getSelectedFile();
 	                dataValues[0]=file.getName();
-	                Download client = new Download(file);
-	        		try{
-	        			(new Thread(client)).run();
-	        		}catch(Exception a)
-	        		{
-	        			a.printStackTrace();
-	        		}
-	                table.setValueAt(dataValues[0], 0, 0);
-	                dataValues[1]=twoDForm.format(file.length()/1024);
-	                table.setValueAt(dataValues[1], 0, 1);
-	                System.out.println(dataValues[0]);
-	                log.append("Opening: " + file.getName() + "." + newline);
+	               	download(file);
 	                
 	            } else {
 	                log.append("Open command cancelled by user." + newline);
@@ -125,9 +116,9 @@ class BitTorrentView extends 	JFrame
 			public void actionPerformed(ActionEvent arg0) {
 				if(tglbtnStart.isSelected()){
 					
-					update();
-					//tglbtnStart.setText("Pause");
-					tglbtnStart.setIcon(new ImageIcon("C:\\Users\\MANISH\\workspace\\GUIDemo\\Pause.png"));
+					tglbtnStart.setText("Pause");
+					running.running= false;
+					//tglbtnStart.setIcon(new ImageIcon("C:\\Users\\MANISH\\workspace\\GUIDemo\\Pause.png"));
 					//do stuff when Start is clicked
 				}else{
 					//tglbtnStart.setText("Start");
@@ -184,7 +175,7 @@ class BitTorrentView extends 	JFrame
 		getContentPane().add(scrollPane_2);
 		
 		// Create columns names
-		String columnNames[] = { "Name", "Size(kb)","D Speed", "Time", "Status","Uploaded", "U Speed", "Peers", "Seed" };
+		String columnNames[] = { "Name", "Size(kb)","Torrent", "Time", "Status","Uploaded", "U Speed", "Peers", "Seed" };
 
 			
 		tableModel = new MyTableModel(columnNames, 0);
@@ -286,7 +277,7 @@ class BitTorrentView extends 	JFrame
 			{
 				if(file.getName().contains("hist.txt")){
 					System.out.println(file.getName());
-					//download(file.getName(),index);
+					down(file.getName(),index);
 				}
 				index++;
 			}
@@ -307,15 +298,37 @@ class BitTorrentView extends 	JFrame
 		
 	}
 	
-	/*private static void download(String name, int i)
+	private static void down(String name, int i)
 	{
-		RUBTClient temp = RUBTClient.loadDownloadHistory(name);
-		clients.put(i, temp);
-		try{
-			(new Thread(temp)).start();
-		}catch(Exception e)
-		{
-			e.printStackTrace();
+		if(running == null){
+			running = Download.loadDownloadHistory(name);
+			clients.put(i, running	);
+			try{
+				(new Thread(running)).start();
+			}catch(Exception e)
+			{
+				e.printStackTrace();
+			}
+		}else{
+
 		}
-	}*/
+	}
+
+	private void download(File f)
+	{
+		Download client = new Download(f);
+	    try{
+	        	(new Thread(client)).start();
+	        	System.out.println("running dl!");
+	    }catch(Exception a)
+	    {
+	    }
+	    table.setValueAt(dataValues[0], 0, 0);
+	    dataValues[1]=twoDForm.format(f.length()/1024);
+	    table.setValueAt(dataValues[1], 0, 1);
+	    System.out.println(dataValues[0]);
+	  	log.append("Opening: " + f.getName() + "." + newline);
+	}
+
+
 }
