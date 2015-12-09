@@ -1,6 +1,7 @@
 //Imports
 import java.awt.EventQueue;
-
+import javax.swing.event.ListSelectionListener;
+import javax.swing.event.ListSelectionEvent;
 import javax.swing.JFrame;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListModel;
@@ -29,10 +30,8 @@ import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
 import javax.swing.ImageIcon;
 import javax.swing.border.EmptyBorder;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
-
 import java.util.*;
+import javax.swing.JOptionPane;
 import java.nio.file.Paths;
 import java.nio.file.Path;
 
@@ -55,6 +54,7 @@ class BitTorrentView extends JFrame
 	private static HashMap<Integer,Download> clients = new HashMap<Integer, Download>();
 	private static ArrayList<waitObj> waiting = new ArrayList<waitObj>(); 
 	public static Download running = null;
+	public  static int used =0;
 
 	// Constructor of main frame
 	public BitTorrentView() {
@@ -62,9 +62,29 @@ class BitTorrentView extends JFrame
 		getContentPane().setSize(new Dimension(450, 300));
 		setSize(new Dimension(950, 355));
 		setTitle("ZMJTorrent");
-		System.out.println("init!");
-		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		initialize();
+		setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
+		addWindowListener(new java.awt.event.WindowAdapter() {
+		    @Override
+		    public void windowClosing(java.awt.event.WindowEvent windowEvent) {
+		        if (JOptionPane.showConfirmDialog(frame, 
+		            "Are you sure to close this window?", "Really Closing?", 
+		            JOptionPane.YES_NO_OPTION,
+		            JOptionPane.QUESTION_MESSAGE) == JOptionPane.YES_OPTION){
+		        		if(running!= null)
+		        		{
+		        			running.running = false;
+		        			running = null;
+		        		}try{
+		        		Thread.sleep(1000);
+		            	}catch(Exception e)
+		            	{
+
+		            	}
+		            	System.exit(0);
+		        }
+		    }
+		});		initialize();
+
 	}
 	
 	/**
@@ -74,9 +94,9 @@ class BitTorrentView extends JFrame
 		frame = new JFrame();
 		frame.setPreferredSize(getPreferredSize());
 		frame.setBounds(100, 100, 450, 300);
-		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.getContentPane().setLayout(null);
 		
+
 	    pro = new MyProgressBar();
 	    pro.setMaximum(100);
 	    // pro.setv
@@ -100,8 +120,6 @@ class BitTorrentView extends JFrame
 	            if (returnVal == JFileChooser.APPROVE_OPTION) {
 	                file = fc.getSelectedFile();
 	                dataValues[0]=file.getName();
-	                tableModel.addRow(dataValues);
-	                tableModel.getValueAt(table.getSelectedRow(), 0);
 	               	download(file);
 	                
 	            } else {
@@ -164,14 +182,13 @@ class BitTorrentView extends JFrame
 		btnRemove.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				//do stuff when remove btn is clicked
-				removeSelectedRows(table);
 			}
 		});
 		btnRemove.setBounds(148, 11, 40, 25);
 		getContentPane().add(btnRemove);
 		
 		JScrollPane scrollPane = new JScrollPane();
-		scrollPane.setBounds(10, 216, 924, 93);
+		scrollPane.setBounds(10, 216, 714, 93);
 		getContentPane().add(scrollPane);
 		
 		log = new JTextArea();
@@ -184,35 +201,20 @@ class BitTorrentView extends JFrame
 		lblLogs.setBounds(318, 193, 70, 25);
 		getContentPane().add(lblLogs);
 		
-		JScrollPane scrollPane_1 = new JScrollPane();
-		scrollPane_1.setBounds(10, 55, 91, 114);
-		getContentPane().add(scrollPane_1);
-		
-		
-		DefaultListModel model = new DefaultListModel();
-		JList list = new JList(model);
-		list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-		list.setBorder(new EmptyBorder(0, 0, 0, 0));
-		model.addElement("Completed (" + 1 +")");
-		model.addElement("Active (" + 2 +")");
-		model.addElement("Inactive (" + 0 +")");
-		scrollPane_1.setViewportView(list);
-		
-		
 		JScrollPane scrollPane_2 = new JScrollPane();
-		scrollPane_2.setBounds(111, 55, 823, 114);
+		scrollPane_2.setBounds(10, 55, 924, 114);
 		getContentPane().add(scrollPane_2);
 		
 		// Create columns names
-		String columnNames[] = { "Name", "Size(kb)","Torrent", "Time", "Status","Uploaded", "U Speed", "Peers", "Seed" };
+		String columnNames[] = { "Name", "Size(kb)","D Speed", "Uploaded","status", "U Speed", "Peers"};
 
 			
 		tableModel = new MyTableModel(columnNames, 0);
-		//tableModel.addRow(dataValues);
+		tableModel.addRow(dataValues);
 		
 		// Create a new table instance
 		table = new JTable(tableModel);
-		table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+		
 		table.getSelectionModel().addListSelectionListener(new ListSelectionListener(){
 	        public void valueChanged(ListSelectionEvent event) {
 	            // do some actions here, for example
@@ -220,8 +222,6 @@ class BitTorrentView extends JFrame
 	            System.out.println(table.getValueAt(table.getSelectedRow(), 0).toString());
 	        }
 	    });
-		
-		
 		TableColumn column = null;
 		for (int i = 0; i < columnNames.length; i++) {
 		    column = table.getColumnModel().getColumn(i);
@@ -245,28 +245,6 @@ class BitTorrentView extends JFrame
 		getContentPane().add(separator_1);
 
 	}
-	
-	public void removeSelectedRows(JTable t){
-		   int[] rows = t.getSelectedRows();
-		   for(int i=0;i<rows.length;i++){
-		     tableModel.removeRow(rows[i]-i);
-		   }
-		}
-	
-	/*private void selectedRowValue(JTable t){
-
-               
-              int selectedRow = t.getSelectedRow();
-               
-                                     
-             System.out.println("Selected row "+ " "+ selectedRow);
-             
-             Object selectedCellValue=t.getValueAt(selectedRow, 0);
-             System.out.println("selectedCellValue "+" "+selectedCellValue);
-		}*/
-
-	
-	
 	public static void update(int b, int up, double ds, double us, int p) {
 	
 	    MyProgressBar bar = (MyProgressBar) table.getValueAt(0, 4);
@@ -283,12 +261,12 @@ class BitTorrentView extends JFrame
 	    dataValues[2]=ds;
 	   	table.setValueAt(dataValues[2], 0,2);
 
-	    dataValues[5] = up;
+	    dataValues[3] = up;
+	    table.setValueAt(dataValues[3], 0,3);
+		dataValues[5] = us;
 	    table.setValueAt(dataValues[5], 0,5);
-		dataValues[6] = us;
+	    dataValues[6] = p;
 	    table.setValueAt(dataValues[6], 0,6);
-	    dataValues[7] = p;
-	    table.setValueAt(dataValues[7], 0,7);
 	}
 	class MyProgressBar extends JProgressBar implements TableCellRenderer {
 
@@ -333,7 +311,6 @@ class BitTorrentView extends JFrame
 	// Main entry point for this example
 	public static void main(String[] args)
 	{
-
 		try {
 			BitTorrentView window = new BitTorrentView();
 			window.setVisible(true);
@@ -377,7 +354,11 @@ class BitTorrentView extends JFrame
 				e.printStackTrace();
 			}
 		}else{
-
+			Download temp = Download.loadDownloadHistory(name);
+			Object[] o = new Object[8];
+			o[0] = temp.tiObject.file_name;
+			o[1] = temp.tiObject.file_length/1024;
+			waiting.add(new waitObj(0, name, null));
 		}
 	}
 
@@ -385,11 +366,18 @@ class BitTorrentView extends JFrame
 	{	
 		if(running != null){
 			waiting.add(new waitObj(0,null, f));
+			Download temp = new Download(f);
+			Object[] o = new Object[8];
+			o[0] = temp.tiObject.file_name;
+			o[1] = temp.tiObject.file_length/1024;
+			tableModel.addRow(o);
 			return;
 		}
 		running = new Download(f);
 	    try{
 	        	(new Thread(running)).start();
+	        	updateView up = new updateView(running, 0);
+				(new Thread(up)).start();
 	    }catch(Exception a)
 	    {
 	    }
@@ -399,6 +387,14 @@ class BitTorrentView extends JFrame
 	    System.out.println(dataValues[0]);
 	  	log.append("Opening: " + f.getName() + "." + newline);
 	}
+
+	public void removeSelectedRows(JTable t){
+		   int[] rows = t.getSelectedRows();
+		   for(int i=0;i<rows.length;i++){
+		     tableModel.removeRow(rows[i]-i);
+		   }
+		}
+
 }
 
 class waitObj
@@ -440,8 +436,7 @@ class updateView implements Runnable{
 			double us = ((double)dl.uploaded - (double)lastuploaded)/1024;
 			this.lastuploaded = dl.uploaded;
 			this.lastdownloaded = dl.downloaded;
-			System.out.println(ds+" "+us);			
-			BitTorrentView.update(per,dl.uploaded/1024,ds,us,0);
+			BitTorrentView.update(per,dl.uploaded/1024,ds,us,dl.peers.size());
 		}
 	}catch(Exception e)
 	{
