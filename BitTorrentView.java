@@ -252,7 +252,7 @@ class BitTorrentView extends JFrame
 		dataValues[6] = us;
 	    table.setValueAt(dataValues[6], 0,6);
 	    dataValues[7] = p;
-	    table.setValueAt(dataValues[5], 0,7);
+	    table.setValueAt(dataValues[7], 0,7);
 	}
 	class MyProgressBar extends JProgressBar implements TableCellRenderer {
 
@@ -320,8 +320,7 @@ class BitTorrentView extends JFrame
         }else{
         	System.out.println("\nNo history file.");
         }
-		
-		
+	
 	}
 	
 	private static void down(String name, int i)
@@ -342,6 +341,7 @@ class BitTorrentView extends JFrame
 				e.printStackTrace();
 			}
 		}else{
+
 		}
 	}
 
@@ -397,6 +397,7 @@ class updateView implements Runnable{
 		while(BitTorrentView.running != null){
 			
 			Thread.sleep(1000);
+			if(BitTorrentView.running == null) return;
 			int per = 100*dl.downloaded / (dl.downloaded+dl.left);
 
 			double ds = ((double)dl.downloaded - (double)lastdownloaded)/1024;
@@ -404,7 +405,7 @@ class updateView implements Runnable{
 			this.lastuploaded = dl.uploaded;
 			this.lastdownloaded = dl.downloaded;
 			System.out.println(ds+" "+us);			
-			BitTorrentView.update(per,dl.uploaded,ds,us,0);
+			BitTorrentView.update(per,dl.uploaded/1024,ds,us,0);
 		}
 	}catch(Exception e)
 	{
