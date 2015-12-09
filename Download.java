@@ -403,7 +403,6 @@ public class Download implements Runnable{
                 msg.msg.compact().flip();
                 Pieces pc = pieces.get(idx);
                 pr.outstandingRequests--;
-
                 ((ByteBuffer)pc.getByteBuffer().position(begin)).put(msg.msg);
                 pc.putSlice(begin / Pieces.SLICE_SIZE);
                 pr.downloaded += msg.msg.limit();
@@ -429,42 +428,125 @@ public class Download implements Runnable{
      * A method that chokes and unchokes peers periodically
      */
     private void updateChokedPeers() {
-        
-        Peer choked = null;
-        for (Peer p : peers.values()) {
-            if (!p.choking) {
-                p.connection.sendChoke();
-                p.choking = true;
-                choked = p;
-                break;
-            }
+        System.out.println(peers.size());
+        if(peers.size()<3){    
+            return;
         }
-        // There are no unchoked peers...
-        if (choked == null) {
-            int i = 3;
-            for (Peer p : peers.values()) {
-                p.choking = false;
-                p.connection.sendUnchoke();
-                if (--i == 0) break;
-            }
-        } else {
-            // We choked an unchoked peer, so now unchoke a random peer.
-            for (Peer p : peers.values()) {
-                if (p.choking && p != choked) {
-                    p.choking = false;
-                    p.connection.sendUnchoke();
-                    return;
+    try{
+        if(!isCompleted){
+            Peer p = null;
+            int prev = 0;
+            int s = peers.values();
+            if(s > 3){
+                int c = s - 3;
+                while(c>0){
+                    for(Peer pr : peers.values()){
+                        int ds = pr.downloaded - pr.lastdownloaded;
+                        int us = pr.uploaded -pr.lastuploaded;
+                        if(pr.choking) continue;
+                        if(p == null && pr.uploaded != 0){
+                            p = pr;
+                        }
+                        else if(us > prev){
+                            p = pr;
+                        }
+                        prev = us;
+                        System.out.println((new String(pr.peerId.array()))+" "+ds+" "+us);
+                    }
+                    if(p != null && !p.choking)
+                    {
+                        p.connection.sendChoke();
+                        p.choking = true;
+                        c--;
+                        System.out.println((new String(p.peerId.array()))+" is choked");
+                        return;
+                    }else if(p == null)
+                    {
+                        for(Peer pr : peers.values()){
+                        int ds = pr.downloaded - pr.lastdownloaded;
+                        int us = pr.uploaded -pr.lastuploaded;
+                        if(pr.choking) continue;
+                        if(p == null || pr.downloaded == 0){
+                            p = pr;
+                        }
+                        else if(ds < prev){
+                            p = pr;
+                        }
+                        prev = ds;
+                        System.out.println((new String(pr.peerId.array()))+" "+ds+" "+us);
+                        }
+                        if(p != null && !p.choking)
+                        {
+                            p.connection.sendChoke();
+                            p.choking = true;
+                            c--;
+                            System.out.println((new String(p.peerId.array()))+" is choked");
+                            return;
+                        }else{
+                            c--;
+                        }
+                    }else{
+                        c--;
+                    }
+                    }
+                }
+            else{
+                int c = peers.size() - 3;
+                while(c>0){
+                    for(Peer pr : peers.values()){
+                        int ds = pr.downloaded - pr.lastdownloaded;
+                        int us = pr.uploaded -pr.lastuploaded;
+                        if(pr.choking) continue;
+                        if(p == null || pr.uploaded == 0){
+                            p = pr;
+                        }
+                        else if(us < prev){
+                            p = pr;
+                        }
+                        prev = us;
+                        System.out.println((new String(pr.peerId.array()))+" "+ds+" "+us);
+                    }
+                    if(p != null && p.choking)
+                    {
+                        p.connection.sendChoke();
+                        p.choking = true;
+                        c--;
+                    }else
+                        c--;
+                    }
                 }
             }
-            // Since we couldn't find anyone else to unchoke, just unchoke
-            // the choked peer again.
-            choked.choking = false;
-            choked.connection.sendUnchoke();
-        }
+    }catch(Exception e)
+    {
+        System.out.println("n");
+    }
 
-        if (left == 0) {
-            System.out.println("File is already complete.  Seeding.");
+    //unchoke:
+    int count =0;
+    for(Peer pr :peers.values())
+    {
+        if(!pr.choking)
+        {
+            count++;
         }
+    }
+    System.out.println(count);
+    if(count<3)
+    {
+        for(Peer pr: peers.values())
+        {
+            if(count>=3) break;
+            if(pr.choking)
+            {
+                pr.connection.sendUnchoke();
+                pr.choking = false;
+                count++;
+                System.out.println((new String(pr.peerId.array()))+" is unchoked");
+            }
+        }
+    }
+
+
     }
 
 
@@ -777,8 +859,6 @@ public boolean loadHistory(String name)
                     
                     if(completed==100){
                     	finishTime = (int) System.currentTimeMillis();
-                    	
-  
                     	System.out.println("\t It took "+ milliToMin(initiateTime,finishTime) + " minutes to download the complete file");	
                     }
                     if(downloaded /(downloaded+left) >=1 )
