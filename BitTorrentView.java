@@ -29,6 +29,9 @@ import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
 import javax.swing.ImageIcon;
 import javax.swing.border.EmptyBorder;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
+
 import java.util.*;
 import java.nio.file.Paths;
 import java.nio.file.Path;
@@ -57,7 +60,7 @@ class BitTorrentView extends JFrame
 	public BitTorrentView() {
 		setResizable(false);
 		getContentPane().setSize(new Dimension(450, 300));
-		setSize(new Dimension(750, 355));
+		setSize(new Dimension(950, 355));
 		setTitle("ZMJTorrent");
 		System.out.println("init!");
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -97,6 +100,8 @@ class BitTorrentView extends JFrame
 	            if (returnVal == JFileChooser.APPROVE_OPTION) {
 	                file = fc.getSelectedFile();
 	                dataValues[0]=file.getName();
+	                tableModel.addRow(dataValues);
+	                tableModel.getValueAt(table.getSelectedRow(), 0);
 	               	download(file);
 	                
 	            } else {
@@ -159,13 +164,14 @@ class BitTorrentView extends JFrame
 		btnRemove.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				//do stuff when remove btn is clicked
+				removeSelectedRows(table);
 			}
 		});
 		btnRemove.setBounds(148, 11, 40, 25);
 		getContentPane().add(btnRemove);
 		
 		JScrollPane scrollPane = new JScrollPane();
-		scrollPane.setBounds(10, 216, 714, 93);
+		scrollPane.setBounds(10, 216, 924, 93);
 		getContentPane().add(scrollPane);
 		
 		log = new JTextArea();
@@ -194,7 +200,7 @@ class BitTorrentView extends JFrame
 		
 		
 		JScrollPane scrollPane_2 = new JScrollPane();
-		scrollPane_2.setBounds(111, 55, 613, 114);
+		scrollPane_2.setBounds(111, 55, 823, 114);
 		getContentPane().add(scrollPane_2);
 		
 		// Create columns names
@@ -202,10 +208,18 @@ class BitTorrentView extends JFrame
 
 			
 		tableModel = new MyTableModel(columnNames, 0);
-		tableModel.addRow(dataValues);
+		//tableModel.addRow(dataValues);
 		
 		// Create a new table instance
 		table = new JTable(tableModel);
+		table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+		table.getSelectionModel().addListSelectionListener(new ListSelectionListener(){
+	        public void valueChanged(ListSelectionEvent event) {
+	            // do some actions here, for example
+	            // print first column value from selected row
+	            System.out.println(table.getValueAt(table.getSelectedRow(), 0).toString());
+	        }
+	    });
 		
 		
 		TableColumn column = null;
@@ -223,14 +237,36 @@ class BitTorrentView extends JFrame
 		scrollPane_2.setViewportView(table);
 		
 		JSeparator separator = new JSeparator();
-		separator.setBounds(10, 193, 714, 8);
+		separator.setBounds(10, 193, 924, 8);
 		getContentPane().add(separator);
 		
 		JSeparator separator_1 = new JSeparator();
-		separator_1.setBounds(10, 45, 714, 14);
+		separator_1.setBounds(10, 45, 924, 14);
 		getContentPane().add(separator_1);
 
 	}
+	
+	public void removeSelectedRows(JTable t){
+		   int[] rows = t.getSelectedRows();
+		   for(int i=0;i<rows.length;i++){
+		     tableModel.removeRow(rows[i]-i);
+		   }
+		}
+	
+	/*private void selectedRowValue(JTable t){
+
+               
+              int selectedRow = t.getSelectedRow();
+               
+                                     
+             System.out.println("Selected row "+ " "+ selectedRow);
+             
+             Object selectedCellValue=t.getValueAt(selectedRow, 0);
+             System.out.println("selectedCellValue "+" "+selectedCellValue);
+		}*/
+
+	
+	
 	public static void update(int b, int up, double ds, double us, int p) {
 	
 	    MyProgressBar bar = (MyProgressBar) table.getValueAt(0, 4);
