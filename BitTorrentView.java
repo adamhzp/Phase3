@@ -269,12 +269,12 @@ class BitTorrentView extends 	JFrame
 	public static void main(String[] args)
 	{
 
-				try {
-					BitTorrentView window = new BitTorrentView();
-					window.setVisible(true);
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
+		try {
+			BitTorrentView window = new BitTorrentView();
+			window.setVisible(true);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 			
 			
 		//before everything... load the history download first 
@@ -301,12 +301,11 @@ class BitTorrentView extends 	JFrame
 	private static void down(String name, int i)
 	{
 		if(running == null){
-					System.out.println("afs");
-
 			running = Download.loadDownloadHistory(name);
 			clients.put(i, running);
 			try{
 				(new Thread(running)).start();
+				dataValues[0] = running.tiObject.file_name;
 				table.setValueAt(dataValues[0],0,0);
 				dataValues[1]=twoDForm.format(running.tiObject.file_length/1024);
 				table.setValueAt(dataValues[1], 0, 1);
@@ -320,10 +319,11 @@ class BitTorrentView extends 	JFrame
 	}
 
 	private void download(File f)
-	{
-		Download client = new Download(f);
+	{	
+		if(running != null) return;
+		running = new Download(f);
 	    try{
-	        	(new Thread(client)).start();
+	        	(new Thread(running)).start();
 	    }catch(Exception a)
 	    {
 	    }
