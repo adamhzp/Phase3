@@ -83,7 +83,6 @@ public class Download implements Runnable{
     private  int finishTime = 0;
     private  Timer chokeTimer;
     private  byte[] torrentFileData = null;
-    private  int rare[] = null;
     
     public Download(File torrentFile)
     {
@@ -99,7 +98,6 @@ public class Download implements Runnable{
             pieces = generatePieces();      // generate piece from torrent
             hash = infoHash(tiObject.info_hash.array());
             trackerURL =tiObject.announce_url;
-            rare = new int[pcTotal];
             String destinationFile = tiObject.file_name;
             try {
                 dataFile = new RandomAccessFile(destinationFile, "rw");
@@ -151,7 +149,6 @@ public class Download implements Runnable{
                 System.err.println("IO exception occure while opening the destinationFile to write");
             }
 
-            rare = new int[pcTotal];
     	}catch(Exception e){
         	e.printStackTrace();
         }
@@ -650,14 +647,7 @@ public boolean loadHistory(String name)
         
         return true;
     }
-    public  void setRare(int index)
-    {
-        if(rare[index] == -1)
-            return;
-        
-        rare[index]++;
 
-    }
     /*
      * Send requests to other peers
      */
@@ -704,23 +694,40 @@ public boolean loadHistory(String name)
      */
     private  Pieces choosePiece(Peer pr) {
 
-        int rtn = -1;
+    int[] pieceRanks = new int[pieces.size()];
 
-        for(Pieces piece: pieces){
-            if(rare[piece.getIndex()]!=-1 && pr.canGetPiece(piece.getIndex()))
-            {
-                if(rtn == -1){
-                    rtn = piece.getIndex();
-                }else if(rare[piece.getIndex()] < rare[rtn]){
-                    rtn = piece.getIndex();
+        for(Pieces piece : pieces) {
+            if (piece.getState() == Pieces.TorrentFilePiecesState.INCOMPLETE && pr.canGetPiece(piece.getIndex())) {
+                pieceRanks[piece.getIndex()] = 0;
+            } else {
+                pieceRanks[piece.getIndex()] = -1;
+            }
+        }
+
+        for (Peer peer : peers.values()) {
+            for (Pieces piece : pieces) {
+                if (peer.canGetPiece(piece.getIndex()) && pieceRanks[piece.getIndex()] != -1) {
+                    pieceRanks[piece.getIndex()]++;
                 }
             }
         }
 
-        if(rtn == -1)
+        int leastPieceIndex = -1, leastPieceValue = -1;
+
+        for (int i = 0; i < pieceRanks.length; i++) {
+            if (leastPieceIndex == -1 && pieceRanks[i] != -1) {
+                leastPieceIndex = i;
+                leastPieceValue = pieceRanks[i];
+            }
+            else if (leastPieceValue != -1 && leastPieceValue > pieceRanks[i] && pieceRanks[i] != -1) {
+                leastPieceIndex = i;
+                leastPieceValue = pieceRanks[i];
+            }
+        }
+        if (leastPieceIndex == -1)
             return null;
 
-        return pieces.get(rtn);
+        return pieces.get(leastPieceIndex);        
     }
 
     /**
@@ -746,7 +753,6 @@ public boolean loadHistory(String name)
                     fileByteBuffer.position(piece.getIndex() * tiObject.piece_length);
                     fileByteBuffer.put(piece.getByteBuffer());
                     piece.setState(Pieces.TorrentFilePiecesState.COMPLETE);
-                    rare[piece.getIndex()] = -1;
                     piecesHad.set(piece.getIndex());
                     for (Peer p : peers.values()) {
                         p.connection.sendHave(piece.getIndex());
