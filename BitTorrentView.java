@@ -29,13 +29,13 @@ import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
 import javax.swing.ImageIcon;
 import javax.swing.border.EmptyBorder;
-import java.util.HashMap;
+import java.util.*;
 import java.nio.file.Paths;
 import java.nio.file.Path;
 
 import javax.swing.*;
 
-class BitTorrentView extends 	JFrame
+class BitTorrentView extends JFrame
 {
 	// Instance attributes used in this example
 	public static JFileChooser fc;
@@ -50,7 +50,7 @@ class BitTorrentView extends 	JFrame
 	public static Object dataValues[] = { "", "","", "", "","", "", "", "" };
 	public static DecimalFormat twoDForm = new DecimalFormat("#.##");
 	private static HashMap<Integer,Download> clients = new HashMap<Integer, Download>();
-
+	private static ArrayList<waitObj> waiting = new ArrayList<waitObj>(); 
 	public static Download running = null;
 
 	// Constructor of main frame
@@ -63,7 +63,6 @@ class BitTorrentView extends 	JFrame
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		initialize();
 	}
-	
 	
 	/**
 	 * Initialize the contents of the frame.
@@ -117,13 +116,36 @@ class BitTorrentView extends 	JFrame
 			public void actionPerformed(ActionEvent arg0) {
 				if(tglbtnStart.isSelected()){
 					
+					String name = "";
+            		for(int i = 0; i<running.tiObject.file_name.length();i++)
+            		{
+               		 if(Character.isLetterOrDigit(running.tiObject.file_name.charAt(i)))
+                	 {
+                  		  name+=running.tiObject.file_name.charAt(i);
+               		 }else{
+                	   	 break;
+                	 }
+            		}
+            		name+="hist.txt";
+            		waiting.add(new waitObj(1,name,null));
 					tglbtnStart.setText("Pause");
-					running.running= false;
+					running.running = false;
+					running = null;
 					//tglbtnStart.setIcon(new ImageIcon("C:\\Users\\MANISH\\workspace\\GUIDemo\\Pause.png"));
 					//do stuff when Start is clicked
 				}else{
-					//tglbtnStart.setText("Start");
-					tglbtnStart.setIcon(new ImageIcon("C:\\Users\\MANISH\\workspace\\GUIDemo\\Start.png"));
+
+					if(waiting.size()>0){
+
+						waitObj temp = waiting.remove(0);
+						System.out.println(temp.name+" "+temp.type);
+						if(temp.type == 1)
+						{
+							down(temp.name ,1);
+						}
+						tglbtnStart.setText("Start");
+					}
+					//tglbtnStart.setIcon(new ImageIcon("C:\\Users\\MANISH\\workspace\\GUIDemo\\Start.png"));
 					//do stuff when pause clicked
 				}
 			}
@@ -209,7 +231,7 @@ class BitTorrentView extends 	JFrame
 		getContentPane().add(separator_1);
 
 	}
-	public void update() {
+	public static void update(int b, int up, double ds, double us, int p) {
 	
 	    MyProgressBar bar = (MyProgressBar) table.getValueAt(0, 4);
 	    bar.setStringPainted(true);
@@ -219,11 +241,18 @@ class BitTorrentView extends 	JFrame
 	    }else{
 	    	bar.setString(bar.getValue());
 	    }
-	    bar.setValue(bar.getValue() + 10);
+	    bar.setValue(b);
 	    ((MyTableModel) table.getModel()).fireTableCellUpdated(0, 4);
+	    
+	    dataValues[2]=ds;
+	   	table.setValueAt(dataValues[2], 0,2);
 
-	    System.out.println(" bar value " + bar.getValue());
-
+	    dataValues[5] = up;
+	    table.setValueAt(dataValues[5], 0,5);
+		dataValues[6] = us;
+	    table.setValueAt(dataValues[6], 0,6);
+	    dataValues[7] = p;
+	    table.setValueAt(dataValues[5], 0,7);
 	}
 	class MyProgressBar extends JProgressBar implements TableCellRenderer {
 
@@ -275,10 +304,7 @@ class BitTorrentView extends 	JFrame
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-			
-			
 		//before everything... load the history download first 
-
 		File[] files = new File(Paths.get(".").toAbsolutePath().normalize().toString()).listFiles();
 		int index = 1;
 		if(files!=null)
@@ -309,18 +335,22 @@ class BitTorrentView extends 	JFrame
 				table.setValueAt(dataValues[0],0,0);
 				dataValues[1]=twoDForm.format(running.tiObject.file_length/1024);
 				table.setValueAt(dataValues[1], 0, 1);
+				updateView up = new updateView(running, 0);
+				(new Thread(up)).start();
 			}catch(Exception e)
 			{
 				e.printStackTrace();
 			}
 		}else{
-
 		}
 	}
 
 	private void download(File f)
 	{	
-		if(running != null) return;
+		if(running != null){
+			waiting.add(new waitObj(0,null, f));
+			return;
+		}
 		running = new Download(f);
 	    try{
 	        	(new Thread(running)).start();
@@ -333,6 +363,53 @@ class BitTorrentView extends 	JFrame
 	    System.out.println(dataValues[0]);
 	  	log.append("Opening: " + f.getName() + "." + newline);
 	}
+}
 
+class waitObj
+{
+    int type;		// 0 for torrent file, 1 for history file
+    String name;
+    File f;
+    public waitObj(int t, String n, File f)
+    {
+        this.type = t;
+        this.name = n;
+        this.f = f;
+    }
+}
+
+class updateView implements Runnable{
+
+	public Download dl;
+	public int id;	
+	int lastdownloaded;
+	int lastuploaded;
+	public updateView(Download dl, int id)
+	{
+		this.dl = dl;
+		this.id = id;
+		this.lastuploaded = dl.uploaded;
+		this.lastdownloaded = dl.downloaded;
+	}
+
+	public void run(){
+		try{
+		while(BitTorrentView.running != null){
+			
+			Thread.sleep(1000);
+			int per = 100*dl.downloaded / (dl.downloaded+dl.left);
+
+			double ds = ((double)dl.downloaded - (double)lastdownloaded)/1024;
+			double us = ((double)dl.uploaded - (double)lastuploaded)/1024;
+			this.lastuploaded = dl.uploaded;
+			this.lastdownloaded = dl.downloaded;
+			System.out.println(ds+" "+us);			
+			BitTorrentView.update(per,dl.uploaded,ds,us,0);
+		}
+	}catch(Exception e)
+	{
+		e.printStackTrace();
+	}
+	}
 
 }
